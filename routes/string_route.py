@@ -1,8 +1,7 @@
 from flask import request, jsonify, Blueprint
 from sqlalchemy.exc import IntegrityError
-from models.string_model import StringAnalysis
+from models.string_model import StringAnalysis, db
 from services.analyzer_service import analyze_string
-from models.string_model import db
 
 string_db = Blueprint('string_db', __name__)
 
@@ -11,14 +10,14 @@ def create_string_analyzer():
     data = request.get_json()
     if not data or "value" not in data:
         return jsonify({"error": "missing value field"}), 400
-    value = data["value"]
+    value = data["value"].strip()
 
     existing_strings = StringAnalysis.query.filter_by(value=value).first()
     if existing_strings:
         return jsonify({"error": "string already exist"}),409
 
     props = analyze_string(value)
-    string_hash = props["properties"]["sha256_hash"]
+    string_hash = props["id"]
 
     record = StringAnalysis(
         id = string_hash,
@@ -36,7 +35,7 @@ def create_string_analyzer():
     response = {
         "id": string_hash,
         "value": value,
-        "properties": props,
+        "properties": props["properties"],
         "created_at": record.created_at.isoformat() + "Z"
     }
 
@@ -56,38 +55,37 @@ def get_all_strings():
     for record in query.all():
         props = record.properties
 
-        if is_palindrome is not None:
-            if props.get("is_palindrome") != (is_palindrome.lower() == "true"):
-                continue
-            if min_length is not None and props.get("length", 0) < min_length:
-                continue
-            if max_length is not None and props.get("length", 0) > max_length:
-                continue
-            if word_count is not None and props.get("count", 0) != word_count:
-                continue
-            if contains_character and contains_character.lower() not in record.value.lower():
-                continue
+        if is_palindrome is not None and props.get("is_palindrome") != (is_palindrome.lower() == "true"):
+            continue
+        if min_length is not None and props.get("length", 0) < min_length:
+            continue
+        if max_length is not None and props.get("length", 0) > max_length:
+            continue
+        if word_count is not None and props.get("count", 0) != word_count:
+            continue
+        if contains_character and contains_character.lower() not in record.value.lower():
+            continue
 
-            results.append({
-                "id": record.id,
-                "value": record.value,
-                "properties": props,
-                "created_at": record.created_at.isoformat() + "Z"
-            })
+        results.append({
+            "id": record.id,
+            "value": record.value,
+            "properties": props,
+            "created_at": record.created_at.isoformat() + "Z"
+        })
 
-        response = {
-            "data": results,
-            "count": len(results),
-            "filters_applied": {
-                "is_palindrome": is_palindrome,
-                "min_length": min_length,
-                "max_length": max_length,
-                "word_count": word_count,
-                "contains_character": contains_character,
-            }
+    response = {
+        "data": results,
+        "count": len(results),
+        "filters_applied": {
+            "is_palindrome": is_palindrome,
+            "min_length": min_length,
+            "max_length": max_length,
+            "word_count": word_count,
+            "contains_character": contains_character,
         }
+    }
 
-        return jsonify(response), 200
+    return jsonify(response), 200
 
 @string_db.route("/strings/<string_value>", methods=["GET"])
 def get_single_string(string_value):

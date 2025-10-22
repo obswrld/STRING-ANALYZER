@@ -4,7 +4,7 @@ from flask_sqlalchemy import SQLAlchemy
 db = SQLAlchemy()
 
 class StringAnalysis(db.Model):
-    __tablename__ = "String_analysis"
+    __tablename__ = "string_analysis"
 
     id = db.Column(db.String(64), primary_key=True)
     value= db.Column(db.String, nullable=False, unique=True)
