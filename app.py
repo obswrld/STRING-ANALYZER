@@ -1,3 +1,4 @@
+
 from flask import Flask
 from models.string_model import db
 from routes.string_route import string_db
@@ -15,6 +16,6 @@ def home():
     return {"message": "Welcome to StringAnalysis API!"}
 
 if __name__ == '__main__':
-    with app.app_context():
-        db.create_all()
-    app.run(debug=True)
+    import os
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host='0.0.0.0', port=port)
