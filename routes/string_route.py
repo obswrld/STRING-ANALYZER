@@ -1,7 +1,7 @@
 from flask import request, jsonify, Blueprint
 from sqlalchemy.exc import IntegrityError
 from models.string_model import StringAnalysis, db
-from services.analyzer_service import analyze_string
+from services.analyzer_service import analyze_string, parse_natural_language_query
 
 string_db = Blueprint('string_db', __name__)
 
@@ -98,6 +98,61 @@ def get_single_string(string_value):
         "value": record.value,
         "properties": record.properties,
         "created_at": record.created_at.isoformat() + "Z"
+    }
+
+    return jsonify(response), 200
+
+@string_db.route("/strings/<string_value>", methods=["DELETE"])
+def delete_string(string_value):
+    record = StringAnalysis.query.filter_by(value=string_value).first()
+    if not record:
+        return jsonify({"error": "string not found"}), 404
+    db.session.delete(record)
+    db.session.commit()
+    return '', 204
+
+@string_db.route("/strings/filter-by-natural-language", methods=["GET"])
+def filter_by_natural_language():
+    query = request.args.get("query")
+    if not query:
+        return jsonify({"error": "missing query parameter"}), 400
+
+    try:
+        filters = parse_natural_language_query(query)
+    except Exception as e:
+        return jsonify({"error": "unable to parse natural language"}), 400
+
+    if not filters:
+        return jsonify({"error": "no filter could be interpreted from the query"}), 422
+
+    results = []
+    for record in StringAnalysis.query.all():
+        props = record.properties
+        if "is_palindrome" in filters and props.get("is_palindrome") != filters["is_palindrome"]:
+            continue
+        if "word_count" in filters and props.get("word_count", 0) != filters["word_count"]:
+            continue
+        if "min_length" in filters and props.get("length", 0) < filters["min_length"]:
+            continue
+        if "max_length" in filters and props.get("length", 0) > filters["max_length"]:
+            continue
+        if "contains_character" in filters and filters["contains_character"].lower() not in record.value.lower():
+            continue
+
+        results.append({
+            "id": record.id,
+            "value": record.value,
+            "properties": props,
+            "created_at": record.created_at.isoformat() + "Z"
+        })
+
+    response = {
+        "data": results,
+        "count": len(results),
+        "interpreted_query": {
+            "original": query,
+            "parsed_filters": filters
+        }
     }
 
     return jsonify(response), 200

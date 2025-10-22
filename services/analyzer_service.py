@@ -33,3 +33,24 @@ def analyze_string(value: str):
     }
 
     return analyzed_data
+
+def parse_natural_language_query(query: str):
+    filters = {}
+    q = query.lower()
+    if "palindromic" in q:
+        filters["is_palindrome"] = True
+    if "single word" in q:
+        filters["word_count"] = 1
+
+    import re
+    match = re.search(r"longer than (\d+) characters", q)
+    if match:
+        filters["length"] = int(match.group(1)) + 1
+    match = re.search(r"contains the letter (/w)", q)
+    if match:
+        filters["contains_character"] = match.group(1).lower()
+
+    if "first vowel" in q:
+        filters["contains_character"] = "a"
+
+    return filters
