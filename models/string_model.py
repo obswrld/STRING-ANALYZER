@@ -1,9 +1,7 @@
 from datetime import datetime
 from flask_sqlalchemy import SQLAlchemy
 
-
 db = SQLAlchemy()
-
 
 class StringAnalysis(db.Model):
     __tablename__ = "String_analysis"

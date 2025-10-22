@@ -41,3 +41,50 @@ def create_string_analyzer():
     }
 
     return jsonify(response), 201
+
+@string_db.route("/strings", methods=["GET"])
+def get_all_strings():
+    query = StringAnalysis.query
+    is_palindrome = request.args.get("is_palindrome")
+    min_length = request.args.get("min_length", type=int)
+    max_length = request.args.get("max_length", type=int)
+    word_count = request.args.get("word_count", type=int)
+    contains_character = request.args.get("contains_character")
+
+    results = []
+
+    for record in query.all():
+        props = record.properties
+
+        if is_palindrome is not None:
+            if props.get("is_palindrome") != (is_palindrome.lower() == "true"):
+                continue
+            if min_length is not None and props.get("length", 0) < min_length:
+                continue
+            if max_length is not None and props.get("length", 0) > max_length:
+                continue
+            if word_count is not None and props.get("count", 0) != word_count:
+                continue
+            if contains_character and contains_character.lower() not in record.value.lower():
+                continue
+
+            results.append({
+                "id": record.id,
+                "value": record.value,
+                "properties": props,
+                "created_at": record.created_at.isoformat() + "Z"
+            })
+
+        response = {
+            "data": results,
+            "count": len(results),
+            "filters_applied": {
+                "is_palindrome": is_palindrome,
+                "min_length": min_length,
+                "max_length": max_length,
+                "word_count": word_count,
+                "contains_character": contains_character,
+            }
+        }
+
+        return jsonify(response), 200
