@@ -88,3 +88,18 @@ def get_all_strings():
         }
 
         return jsonify(response), 200
+
+@string_db.route("/strings/<string_value>", methods=["GET"])
+def get_single_string(string_value):
+    record = StringAnalysis.query.filter_by(value=string_value).first()
+    if not record:
+        return jsonify({"error": "string not found"}), 404
+
+    response = {
+        "id": record.id,
+        "value": record.value,
+        "properties": record.properties,
+        "created_at": record.created_at.isoformat() + "Z"
+    }
+
+    return jsonify(response), 200
